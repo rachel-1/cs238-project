@@ -1,6 +1,7 @@
 import networkx as nx
 from graph_setup import init_graph
 import math
+import matplotlib.pyplot as plt
 
 '''
 needs access to routes available
@@ -27,6 +28,16 @@ global_time = 0 # in secs?
 
 # drone moves 1 unit per sec
 # bus moves 2 units per sec
+
+def display_graph(G):
+    pos = nx.random_layout(G)
+    #pos = nx.spring_layout(G) # positions for all nodes
+    nx.draw_networkx_nodes(G,pos)
+    nx.draw_networkx_edges(G,pos,arrowstyle='->')
+    nx.draw_networkx_labels(G,pos)
+
+    plt.show()
+    #plt.savefig('graph.png', dpi=200)
 
 def calc_dist(nodeOne, nodeTwo):
     return math.sqrt((nodeOne['x'] - nodeTwo['x'])**2
@@ -63,6 +74,7 @@ def add_edges(G):
                     G.add_edge(node_name, other_name)
 
 add_edges(G)
+display_graph(G)
 path = nx.astar_path(G, 'current', 'end')
 print(path)
                 
