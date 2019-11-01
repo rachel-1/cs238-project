@@ -43,6 +43,29 @@ def calc_dist(nodeOne, nodeTwo):
     return math.sqrt((nodeOne['x'] - nodeTwo['x'])**2
               + (nodeOne['y'] - nodeTwo['y'])**2)
 
+def calc_edge_weights(G):
+    import mdptoolbox, mdptoolbox.example
+    # (A, S, S)
+    # state: (distance from goal, speed)
+    states = []
+    for distance in range(0, starting_dist, 0.1):
+        for speed in range(0, DRONE_MAX_SPEED, 0.1):
+            states.append((distance, speed))
+
+    # transition probability based on delta distance vs speed
+    T = []
+    for curr_state in states:
+        for next_state in states:
+            delta_dist = next_state.distance - curr_state.distance
+            prob = 1 if delta_dist == curr_state.speed else 0
+    
+    T = # transition probability
+    R = # reward matrix
+    discount = 0.98
+    vi = mdptoolbox.mdp.ValueIteration(T, R, discount)
+    vi.run()
+    print(vi.policy)
+
 # TODO - check for cycles?!
 # TODO - remove nodes that have been passed already
 def add_edges(G):
