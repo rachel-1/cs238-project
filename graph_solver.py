@@ -20,7 +20,15 @@ sometimes edges go out of existence as distributions are updated
 curr: doing feasibility test to see if edges ok
 '''
 
+DRONE_MAX_ACCEL = 1
 DRONE_MAX_SPEED = 1
+DRONE_MAX_DIST = 150
+ACCEL_STEP = 0.1
+SPEED_STEP = 0.1
+DIST_STEP = 0.1
+
+DIST_VARIANCE = 1
+SPEED_VARIANCE = 1
 
 G = init_graph('test1')
 
@@ -47,19 +55,37 @@ def calc_edge_weights(G):
     import mdptoolbox, mdptoolbox.example
     # (A, S, S)
     # state: (distance from goal, speed)
-    states = []
-    for distance in range(0, starting_dist, 0.1):
-        for speed in range(0, DRONE_MAX_SPEED, 0.1):
-            states.append((distance, speed))
-
+    # states[r,c]:
+    #  - speed = r * SPEED_STEP
+    #  - distance from goal = c * DIST_STEP
+    num_actions = DRONE_MAX_ACCEL // ACCEL_STEP
+    num_rows = DRONE_MAX_SPEED // SPEED_STEP
+    num_cols = DRONE_MAX_DIST // DIST_STEP
+    num_states = num_rows * num_cols
     # transition probability based on delta distance vs speed
-    T = []
-    for curr_state in states:
-        for next_state in states:
-            delta_dist = next_state.distance - curr_state.distance
-            prob = 1 if delta_dist == curr_state.speed else 0
+    T = np.zeros((num_actions,num_states,num_states))
+    for action_index, intended_action in enumerate(range(0, DRONE_MAX_ACCEL, ACCEL_STEP)):
+        for curr_state_r in range(num_rows):
+            for curr_state_c in range(num_cols):
+                curr_state_index = np.ravel_multi_index((curr_state_r), (curr_state_c)) #r*num_cols + c
+                curr_state_speed = curr_state_r * SPEED_STEP
+                curr_state_distance = curr_state_c * DIST_STEP
+                intended_speed = scipy.stats.norm(curr_state_speed + intended_action, SPEED_VARIANCE)
+                #states = np.zeros((num_rows, num_cols))
+                # calculate next state
+                for next_state_r in range(num_rows):
+                    current_speed = next_state_r * SPEED_STEP
+                    # probability of getting speed (as represented by row in states table)
+                    speed_prob = intended_speed.cdf(current_speed + SPEED_STEP/2) - intended_speed.cdf(current_speed - SPEED_STEP/2)
+                    intended_dist = scipy.states.norm(curr_state_distance - intended_speed, DIST_VARIANCE)
+                    for next_state_c in range(num_cols):
+                        current_dist = next_state_c * DIST_STEP
+                        total_prob = intended_dist.cdf(current_dist + DIST_STEP/2) - intended_dist.cdf(current_dist - DIST_STEP/2)
+                        #states[r,c] = total_prob
+                        next_state_index = np.ravel_multi_index((next_state_r), (next_state_c)) #r*num_cols + c
+                        T[action_index, curr_state_index, next_state_index] = total_prob
+
     
-    T = # transition probability
     R = # reward matrix
     discount = 0.98
     vi = mdptoolbox.mdp.ValueIteration(T, R, discount)
