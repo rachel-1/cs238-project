@@ -14,7 +14,7 @@ def add_test1_data(G):
     G.add_node(2, estimated_arrival_time=2, x=3, y=0)
 
     # bus 1 will always go between stops (riding edge)
-    G.add_weighted_edge([(1,2,1)])
+    G.add_edge(1,2)
 
     # drone goal
     G.add_node('end', x=4, y=0)
