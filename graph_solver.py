@@ -3,8 +3,9 @@ import numpy as np
 from graph_setup import init_graph
 from scipy import stats
 import math
+from utils import *
 from visualization import *
-import config
+from config import *
 
 '''
 needs access to routes available
@@ -53,40 +54,54 @@ def calc_edge_weights(G):
     # states[r,c]:
     #  - speed = r * SPEED_STEP
     #  - distance from goal = c * DIST_STEP
-    num_actions = int(DRONE_MAX_ACCEL/ACCEL_STEP)
-    num_rows = int(DRONE_MAX_SPEED/SPEED_STEP)
-    num_cols = int(DRONE_MAX_DIST/DIST_STEP)
+    num_actions = int(2*DRONE_MAX_ACCEL/ACCEL_STEP + 1)
+    num_rows = int(DRONE_MAX_SPEED/SPEED_STEP + 1)
+    num_cols = int(DRONE_MAX_DIST/DIST_STEP + 1)
     num_states = num_rows * num_cols
     # transition probability based on delta distance vs speed
     T = np.zeros((num_actions,num_states,num_states))
-    for action_index, intended_action in enumerate(np.arange(0, DRONE_MAX_ACCEL, ACCEL_STEP)):
+    for action_index, intended_action in enumerate(np.arange(-DRONE_MAX_ACCEL, DRONE_MAX_ACCEL+ACCEL_STEP, ACCEL_STEP)):
+        assert(action_index == action_to_idx(intended_action))
+        assert(intended_action == idx_to_action(action_index))
         for curr_state_r in range(num_rows):
             for curr_state_c in range(num_cols):
                 curr_state_index = curr_state_r*num_cols + curr_state_c
                 curr_state_speed = curr_state_r * SPEED_STEP
                 curr_state_distance = curr_state_c * DIST_STEP
+                assert(state_to_idx((curr_state_speed, curr_state_distance)) == curr_state_index)
+                assert(idx_to_state(curr_state_index) == (curr_state_speed, curr_state_distance))
                 intended_speed = RandVar(curr_state_speed + intended_action, SPEED_VARIANCE)
+                print('-'*80)
                 # calculate next state
                 for next_state_r in range(num_rows):
-                    current_speed = next_state_r * SPEED_STEP
+                    current_speed = next_state_r * SPEED_STEP # can't go backwards
                     # probability of getting speed (as represented by row in states table)
                     speed_prob = intended_speed.probability(current_speed, SPEED_STEP/2)
                     intended_dist = RandVar(abs(curr_state_distance - intended_speed.mean), DIST_VARIANCE)
                     for next_state_c in range(num_cols):
                         current_dist = next_state_c * DIST_STEP
                         total_prob = speed_prob*intended_dist.probability(current_dist, DIST_STEP/2) # TODO - independent??
-                        #if (total_prob != 0):
-                        #print("a={}: ({}, {}) -> ({}, {}) = {}".format(intended_action, curr_state_speed, curr_state_distance, current_speed, current_dist, total_prob))
+                        print("a={}: ({}, {}) -> ({}, {}) = {}".format(intended_action, curr_state_speed, curr_state_distance, current_speed, current_dist, total_prob))
                         next_state_index = next_state_r*num_cols + next_state_c
                         T[action_index, curr_state_index, next_state_index] = total_prob
 
-    print(T)
-    visualize_probabilities(T[0])
-    #R = # reward matrix
+                # ensure T is valid (every row must add up to 1)
+                if T[action_index, curr_state_index].sum() == 0:
+                    T[action_index, curr_state_index, curr_state_index] = 1
+                T[action_index, curr_state_index] /= np.linalg.norm(T[action_index, curr_state_index])
+    # round to allow values to add up to exactly 1
+    T = np.around(T, decimals=5)
+    visualize_T(T)
+    #visualize_probabilities(T[0])
+    # penalty for acceleration (S, A)
+    R = np.zeros((num_states, num_actions))
+    R[:] = -abs(np.arange(-DRONE_MAX_ACCEL, DRONE_MAX_ACCEL+ACCEL_STEP, ACCEL_STEP))*ACCEL_PENALTY
     discount = 0.98
-    vi = mdptoolbox.mdp.ValueIteration(T, R, discount)
+    final_rewards = np.ones(num_states)*-10
+    final_rewards[0] = 0
+    vi = mdptoolbox.mdp.FiniteHorizon(T, R, discount, N=3, h=final_rewards)
     vi.run()
-    print(vi.policy)
+    simulate_policy(vi.policy, T, R)
 
 # TODO - check for cycles?!
 # TODO - remove nodes that have been passed already
@@ -120,9 +135,9 @@ def add_edges(G):
 
 add_edges(G)
 calc_edge_weights(G)
-display_graph(G)
-path = nx.astar_path(G, 'current', 'end')
-print(path)
+#display_graph(G)
+#path = nx.astar_path(G, 'current', 'end')
+#print(path)
                 
         
 
