@@ -1,11 +1,28 @@
 import json
-import math
+from utils import *
+from config import *
 import networkx as nx
 
+def add_test2_data(G):
+    # drone starting location
+    G.add_node('current', x=0, y=0, speed=0, riding=False)
+
+    # bus 1 (stop 1)
+    G.add_node(1, estimated_arrival_time=1, x=1, y=1)
+
+    # bus 1 (stop 2)
+    G.add_node(2, estimated_arrival_time=2, x=3, y=1)
+
+    # bus 1 will always go between stops (riding edge)
+    time_travelled = calc_dist(G.nodes[1], G.nodes[2])/BUS_SPEED
+    G.add_edge(1,2, weight=-1*time_travelled)
+
+    # drone goal
+    G.add_node('end', x=4, y=1)
 
 def add_test1_data(G):
     # drone starting location
-    G.add_node('current', x=0, y=0)
+    G.add_node('current', x=0, y=0, speed=0, riding=False)
 
     # bus 1 (stop 1)
     G.add_node(1, estimated_arrival_time=1, x=1, y=0)
@@ -18,7 +35,6 @@ def add_test1_data(G):
 
     # drone goal
     G.add_node('end', x=4, y=0)
-
 
 def init_grid_from_latlon_bounds(G,
                                  transit_graph,
@@ -85,6 +101,8 @@ def init_graph(graph_name):
 
     if graph_name == 'test1':
         add_test1_data(G)
+    if graph_name == 'test2':
+        add_test2_data(G)
     elif graph_name == 'sf_oct_2019':
         add_sf_oct_2019_data(G)
 
