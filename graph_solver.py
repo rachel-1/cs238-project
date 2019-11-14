@@ -135,7 +135,7 @@ def add_edges(G):
 
 add_edges(G)
 calc_edge_weights(G)
-#display_graph(G)
+display_graph(G)
 #path = nx.astar_path(G, 'current', 'end')
 #print(path)
                 

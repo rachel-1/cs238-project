@@ -9,10 +9,24 @@ def visualize_probabilities(T):
     plt.show()
     
 def display_graph(G):
-    pos = nx.random_layout(G)
-    nx.draw_networkx_nodes(G,pos)
-    nx.draw_networkx_edges(G,pos,arrowstyle='->')
-    nx.draw_networkx_labels(G,pos)
+    # Get draw positions of nodes
+    x_positions = nx.get_node_attributes(G, 'x')
+    y_positions = nx.get_node_attributes(G, 'y')
+    xy_positions = dict()
+    for node in G.nodes:
+        xy_positions[node] = (x_positions[node], y_positions[node])
+
+    fig, ax = plt.subplots()
+
+    # Draw edge weights
+    #TODO: Update with actual edge weight label once they're added
+    labels = nx.get_edge_attributes(G, 'weight')
+    # To test: labels = {e: str(e) for e in G.edges}
+    nx.draw_networkx_edge_labels(G, pos=xy_positions, edge_labels=labels)
+
+    # Draw rest of graph
+    nx.draw_networkx(G, pos=xy_positions, ax=ax)
+    ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
 
     plt.show()
     #plt.savefig('graph.png', dpi=200)
