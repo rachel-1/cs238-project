@@ -8,33 +8,33 @@ def add_test2_data(G):
     G.add_node('current', x=0, y=0, speed=0, riding=False)
 
     # bus 1 (stop 1)
-    G.add_node(1, estimated_arrival_time=1, x=1, y=1)
+    G.add_node(1, estimated_arrival_time=2, x=0, y=1)
 
     # bus 1 (stop 2)
-    G.add_node(2, estimated_arrival_time=2, x=3, y=1)
+    G.add_node(2, estimated_arrival_time=8, x=10, y=1)
 
     # bus 1 will always go between stops (riding edge)
     time_travelled = calc_dist(G.nodes[1], G.nodes[2])/BUS_SPEED
-    G.add_edge(1,2, weight=-1*time_travelled)
+    G.add_edge(1,2, weight=time_travelled, custom=False)
 
     # drone goal
-    G.add_node('end', x=4, y=1)
+    G.add_node('end', x=10, y=8)
 
 def add_test1_data(G):
     # drone starting location
     G.add_node('current', x=0, y=0, speed=0, riding=False)
 
     # bus 1 (stop 1)
-    G.add_node(1, estimated_arrival_time=1, x=1, y=0)
+    G.add_node(1, estimated_arrival_time=2, x=1, y=0)
 
     # bus 1 (stop 2)
-    G.add_node(2, estimated_arrival_time=2, x=3, y=0)
+    G.add_node(2, estimated_arrival_time=4, x=5, y=0)
 
     # bus 1 will always go between stops (riding edge)
-    G.add_edge(1,2)
+    G.add_edge(1,2,custom=False)
 
     # drone goal
-    G.add_node('end', x=4, y=0)
+    G.add_node('end', x=6, y=0)
 
 def init_grid_from_latlon_bounds(G,
                                  transit_graph,

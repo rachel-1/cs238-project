@@ -2,7 +2,8 @@ import numpy as np
 from config import *
 import matplotlib.pyplot as plt
 import networkx as nx
-from utils import *
+#from utils import *
+import utils
 
 def visualize_probabilities(T):
     plt.imshow(T, cmap='hot', interpolation='nearest')
@@ -43,32 +44,3 @@ def visualize_T(T):
                 curr_state_distance = curr_state_c * DIST_STEP
                 print("({}, {}): ".format(curr_state_speed, curr_state_distance), end='')
                 print(T[action_index, curr_state_index])
-
-def simulate_policy(pi, T, R, start_state_idx, max_dist):
-    state_idx = start_state_idx
-    
-    if type(pi) == tuple:
-        while state_idx != 0:
-            action_idx = pi[state_idx]
-            new_state_idx = np.argmax(T[action_idx, state_idx])
-            reward = R[state_idx, action_idx]
-            print("from s={}, a={} yields r={} and s'={}".format(
-                idx_to_state(state_idx, max_dist),
-                idx_to_action(action_idx),
-                reward,
-                idx_to_state(new_state_idx, max_dist)))
-            state_idx = new_state_idx
-        return
-
-    timesteps = pi.shape[1]
-    for i in range(timesteps):
-        action_idx = pi[state_idx, i]
-        new_state_idx = np.argmax(T[action_idx, state_idx])
-        reward = R[state_idx, action_idx]
-        print("from s={}, a={} yields r={} and s'={}".format(
-            idx_to_state(state_idx, max_dist),
-            idx_to_action(action_idx),
-            reward,
-            idx_to_state(new_state_idx, max_dist)))
-        state_idx = new_state_idx
-
