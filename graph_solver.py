@@ -1,8 +1,4 @@
-#import networkx as nx
-#import numpy as np
 from utils import *
-#from visualization import *
-#from config import *
 from local_layer_mdp import *
 
 def calc_edge_weights(G, global_time):

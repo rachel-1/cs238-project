@@ -41,15 +41,17 @@ if __name__ == '__main__':
             num_local_steps_taken += steps_taken
             if not was_successful:
                 print("Failed!")
-                break
+                break # allow global layer to replan
             if num_local_steps_taken > MAX_LOCAL_STEPS: break
         global_time += num_local_steps_taken
 
+        # if we made it to the final goal
         if G.nodes['current']['speed'] == 0 \
            and G.nodes['current']['x'] == G.nodes['end']['x'] \
            and G.nodes['current']['y'] == G.nodes['end']['y']:
             break
 
+        # clear "custom" edges (i.e. not connections between buses)
         edges_to_remove = [edge for edge in G.edges.data() if edge[2]['custom']]
         G.remove_edges_from(edges_to_remove)
 

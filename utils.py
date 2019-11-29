@@ -1,4 +1,3 @@
-#from config import *
 from scipy import stats
 import math
 import numpy as np
@@ -32,15 +31,21 @@ def run_policy(mdp, G, next_node, display=True):
         print("state: ", state) # TODO - remove debug statement
 
         current_pos = (G.nodes['current']['x'], G.nodes['current']['y'])
+
+        # update x,y position of drone
         if num_steps != 0:
             x, y = calc_new_coord(current_pos, target_pos, state[1])
             G.nodes['current']['speed'] = state[0]
             G.nodes['current']['x'] = x
             G.nodes['current']['y'] = y
         print("G.nodes['current']: ", G.nodes['current']) # TODO - remove debug statement
+
+        # if we have reached our goal (speed=0, distance=0)
         if state == (0,0): return True, num_steps
         if display: display_graph(G)
         num_steps += 1
+
+    # failed to reach goal
     return False, num_steps
 
 class RandVar():
