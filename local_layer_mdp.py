@@ -15,7 +15,6 @@ class LocalLayerMDP():
         self.num_rows = int(DRONE_MAX_SPEED/SPEED_STEP + 1)
         self.num_cols = int(start_state[1]/DIST_STEP + 1)
         self.num_states = self.num_rows * self.num_cols
-        self.T = self._calc_T()
 
         self.start_state = start_state
         self.start_state_idx = self.state_to_idx(start_state)
@@ -23,6 +22,7 @@ class LocalLayerMDP():
         # penalty for acceleration (S, A)
         self.R = np.zeros((self.num_states, self.num_actions))
         self.R[:] = -abs(np.arange(-DRONE_MAX_ACCEL, DRONE_MAX_ACCEL+ACCEL_STEP, ACCEL_STEP))*ACCEL_PENALTY
+        
         # penalize velocity - TODO
         R = self.R.T
         R = R.reshape((self.num_actions, self.num_rows, self.num_cols))
@@ -31,6 +31,15 @@ class LocalLayerMDP():
         R = R.reshape(self.num_actions, self.num_states)
         self.R = R.T
         
+        '''
+        # more efficient way of masking out invalid actions?? - TODO
+        arr = np.ones((self.num_rows, self.num_actions))
+        mask_one = np.flip(np.tril(arr,arr.shape[0]-arr.shape[1]+1), axis=0) == 1
+        mask_two = np.flip(np.tril(arr,arr.shape[0]-arr.shape[1]+1), axis=1) == 1
+        tmp = np.repeat((mask_one | mask_two), self.num_cols, axis=0)
+        self.R[tmp] -= INVALID_ACTION_PENALTY
+        '''
+        self.T = self._calc_T() # modifies R to penalize invalid actions
         self.discount = DISCOUNT
 
     def _calc_T(self):
@@ -44,24 +53,26 @@ class LocalLayerMDP():
                     curr_state_speed = curr_state_r * SPEED_STEP
                     curr_state_distance = curr_state_c * DIST_STEP
                     intended_speed = RandVar(curr_state_speed + intended_action, SPEED_VARIANCE)
-                    #print('-'*80)
-                    # calculate next state
-                    for next_state_r in range(self.num_rows):
-                        current_speed = next_state_r * SPEED_STEP # can't go backwards
-                        # probability of getting speed (as represented by row in states table)
-                        speed_prob = intended_speed.probability(current_speed, SPEED_STEP/2)
-                        intended_dist = RandVar(abs(curr_state_distance - intended_speed.mean), DIST_VARIANCE)
-                        for next_state_c in range(self.num_cols):
-                            current_dist = next_state_c * DIST_STEP
-                            total_prob = speed_prob*intended_dist.probability(current_dist, DIST_STEP/2) # TODO - independent??
-                            #print("a={}: ({}, {}) -> ({}, {}) = {}".format(intended_action, curr_state_speed, curr_state_distance, current_speed, current_dist, total_prob))
-                            next_state_index = next_state_r*self.num_cols + next_state_c
-                            T[action_index, curr_state_index, next_state_index] = np.around(total_prob, decimals=5)
-
-                    # if a given action is not valid from the given state, force the action to stay in current state
-                    # NOTE: this is necessary because the MDP solver requires that every row add up to 1
-                    if T[action_index, curr_state_index].sum() == 0:
+                    # only calculate probability if action is valid
+                    if intended_speed.mean <= DRONE_MAX_SPEED and intended_speed.mean >= 0:
+                        # calculate next state
+                        for next_state_r in range(self.num_rows):
+                            next_state_speed = next_state_r * SPEED_STEP # can't go backwards
+                            # probability of getting speed (as represented by row in states table)
+                            speed_prob = intended_speed.probability(next_state_speed, SPEED_STEP/2)
+                            intended_dist = RandVar(abs(curr_state_distance - intended_speed.mean), DIST_VARIANCE)
+                            for next_state_c in range(self.num_cols):
+                                next_state_distance = next_state_c * DIST_STEP
+                                dist_prob = intended_dist.probability(next_state_distance, DIST_STEP/2) # TODO - independent??
+                                total_prob = speed_prob*dist_prob
+                                next_state_index = next_state_r*self.num_cols + next_state_c
+                                T[action_index, curr_state_index, next_state_index] = np.around(total_prob, decimals=5)
+                    else:
+                        # if a given action is not valid from the given state, force the action to stay in current state
+                        # NOTE: this is necessary because the MDP solver requires that every row add up to 1
+                        self.R[curr_state_index, action_index] -= INVALID_ACTION_PENALTY
                         T[action_index, curr_state_index, curr_state_index] = 1
+
                     # normalize values in case rounding made it such that things don't sum to 1
                     T[action_index, curr_state_index] /= T[action_index, curr_state_index].sum()
         return T
