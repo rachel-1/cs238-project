@@ -3,6 +3,8 @@ from graph_setup import init_graph
 from visualization import *
 from graph_solver import *
 from argparse import ArgumentParser
+import time
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -12,6 +14,9 @@ if __name__ == '__main__':
     
     G = init_graph('test2')
     global_time = 0
+
+    if not args.skip_viz:
+        display_graph(G, first_time=True)
     
     # global layer
     while True:
@@ -22,8 +27,9 @@ if __name__ == '__main__':
                 print("edge: ", edge)
         
         if not args.skip_viz: display_graph(G)
+
         mdps = calc_edge_weights(G, global_time)
-        
+
         if args.debug:
             for edge in G.edges().data():
                 print("edge: ", edge)

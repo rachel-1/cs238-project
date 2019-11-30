@@ -2,23 +2,30 @@ import numpy as np
 from config import *
 import matplotlib.pyplot as plt
 import networkx as nx
-#from utils import *
 import utils
 
 def visualize_probabilities(T):
     plt.imshow(T, cmap='hot', interpolation='nearest')
     plt.show()
-    
-def display_graph(G):
+
+def get_positions(G):
     # Get draw positions of nodes
     x_positions = nx.get_node_attributes(G, 'x')
     y_positions = nx.get_node_attributes(G, 'y')
     xy_positions = dict()
     for node in G.nodes:
         xy_positions[node] = (x_positions[node], y_positions[node])
+    return xy_positions
 
-    fig, ax = plt.subplots()
+def display_graph(G, first_time=False):
+    if first_time:
+        plt.ion()
+        fig, ax = plt.subplots()
+        ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
+    else:
+        plt.clf()
 
+    xy_positions = get_positions(G)
     # Draw edge weights
     #TODO: Update with actual edge weight label once they're added
     labels = nx.get_edge_attributes(G, 'weight')
@@ -26,10 +33,17 @@ def display_graph(G):
     nx.draw_networkx_edge_labels(G, pos=xy_positions, edge_labels=labels)
 
     # Draw rest of graph
-    nx.draw_networkx(G, pos=xy_positions, ax=ax)
-    ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
+    nx.draw_networkx(G, pos=xy_positions)#, ax=ax)
 
-    plt.show()
+
+    if first_time:
+        plt.show()
+        plt.pause(0.001)
+        plt.draw()
+    else:
+        plt.draw()
+        
+    plt.pause(0.001)
     #plt.savefig('graph.png', dpi=200)
 
 def visualize_T(T):
