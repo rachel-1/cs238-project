@@ -1,7 +1,13 @@
+from enum import Enum
 from scipy import stats
 import math
 import numpy as np
 from visualization import *
+
+class EdgeType(Enum):
+    RIDING = 0
+    UNCONSTRAINED = 1
+    CONSTRAINED = 2
 
 def calc_dist(nodeOne, nodeTwo):
     return math.sqrt((nodeOne['x'] - nodeTwo['x'])**2
