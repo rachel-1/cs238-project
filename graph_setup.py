@@ -3,23 +3,32 @@ from utils import *
 from config import *
 import networkx as nx
 
-def add_test2_data(G):
+def add_test2_data(G, bus_routes):
     # drone starting location
     G.add_node('current', x=0, y=0, speed=0, riding=False)
 
+    # bus 1 (stop 0)
+    G.add_node(0, arrival_time=RandVar(0,0), x=0, y=5)
+    
     # bus 1 (stop 1)
-    G.add_node(1, estimated_arrival_time=2, x=0, y=1)
+    G.add_node(1, x=0, y=1)
+
+    arrival_mean = int(calc_dist(G.nodes[0], G.nodes[1])/BUS_SPEED)
+    arrival_variance = BUS_ARRIVAL_VARIANCE*arrival_mean
+    G.nodes[1]['arrival_time'] = RandVar(arrival_mean, arrival_variance)
 
     # bus 1 (stop 2)
-    G.add_node(2, estimated_arrival_time=8, x=10, y=1)
+    G.add_node(2, x=10, y=1)
 
     # bus 1 will always go between stops (riding edge)
-    time_travelled = calc_dist(G.nodes[1], G.nodes[2])/BUS_SPEED
-    G.add_edge(1,2, weight=time_travelled, custom=False)
+    G.add_edge(0,1, custom=False)
+    G.add_edge(1,2, custom=False)
 
     # drone goal
     G.add_node('end', x=10, y=8)
 
+    bus_routes.append(0)
+    
 def add_test1_data(G):
     # drone starting location
     G.add_node('current', x=0, y=0, speed=0, riding=False)
@@ -98,12 +107,13 @@ def add_sf_oct_2019_data(G, transit_graph_file='transit_graph_Oct_2019.json'):
 
 def init_graph(graph_name):
     G = nx.DiGraph()
+    bus_routes = []
 
     if graph_name == 'test1':
-        add_test1_data(G)
+        add_test1_data(G, bus_routes)
     if graph_name == 'test2':
-        add_test2_data(G)
+        add_test2_data(G, bus_routes)
     elif graph_name == 'sf_oct_2019':
         add_sf_oct_2019_data(G)
 
-    return G
+    return G, bus_routes

@@ -200,7 +200,7 @@ class RidingPolicy():
         elif step == 1 or step == self.horizon - 2:
             new_speed = 1
         else:
-            new_speed = BUS_SPEED
+            new_speed = (distance - 1)/(self.horizon - 2 - step)
             
         return new_speed, distance - new_speed
         

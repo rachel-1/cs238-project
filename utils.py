@@ -48,6 +48,19 @@ def run_policy(mdp, G, next_node, display=True):
     # failed to reach goal
     return False, num_steps
 
+def update_estimate(prev_rand_var, global_time):
+    # TODO: ensure variance isn't 0
+    #mean = prev_rand_var.distribution.sample()
+    # TODO
+    mean = int(prev_rand_var.mean - prev_rand_var.variance)
+    time_remaining = global_time - mean
+    if time_remaining == 0:
+        variance = 0
+    else:
+        variance = prev_rand_var.variance
+        variance -= variance/time_remaining
+    return RandVar(mean, variance)
+
 class RandVar():
     def __init__(self, mean, variance):
         self.mean = mean
