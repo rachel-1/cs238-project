@@ -130,7 +130,7 @@ class ConstrainedFlight(TransportationEdge):
         # penalize unsuccessful states
         R = self.R.T
         R = R.reshape((self.num_actions, self.num_rows, self.num_cols, self.num_timesteps))
-        R[:, :, :, 0] -= 100
+        R[:, :, :, 0] += R.min()*self.num_timesteps # over-approximate worst possible reward
         R[0, 0, 0, 0] = 0
         R = R.reshape(self.num_actions, self.num_states)
         R = R.T
