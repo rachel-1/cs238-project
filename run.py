@@ -12,7 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('--skip_viz', action='store_true')
     args = parser.parse_args()
     
-    G, bus_routes = init_graph('test2')
+    G, bus_routes = init_graph('test1')
     global_time = 0
 
     if not args.skip_viz:
@@ -47,7 +47,7 @@ if __name__ == '__main__':
             next_node = G.nodes[path[idx+1]]
             if hasattr(mdp, 'horizon'):
                 print("mdp.horizon: ", mdp.horizon) # TODO - remove debug statement
-
+                print("global_time: ", global_time) # TODO - remove debug statement
                 remaining_time = next_node['arrival_time'].mean - global_time
                 if mdp.horizon != remaining_time:
                     print("mdp.horizon: ", mdp.horizon) # TODO - remove debug statement
@@ -55,8 +55,9 @@ if __name__ == '__main__':
                     print("Delay/speed-up")
                     break # there was a delay or speed-up, so replan
             # TODO - break off in the middle of execution if needed
-            was_successful, steps_taken = run_policy(mdp, G, path[idx+1], not args.skip_viz)
+            was_successful, steps_taken = run_policy(mdp, G, path[idx+1], global_time, not args.skip_viz)
             num_local_steps_taken += steps_taken
+            
             if not was_successful:
                 print("Failed!")
                 break # allow global layer to replan

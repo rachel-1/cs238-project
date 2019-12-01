@@ -2,10 +2,11 @@ from scipy import stats
 import math
 import numpy as np
 from visualization import *
+import time
 
-def calc_dist(nodeOne, nodeTwo):
-    return math.sqrt((nodeOne['x'] - nodeTwo['x'])**2
-              + (nodeOne['y'] - nodeTwo['y'])**2)
+def calc_dist(n_one, n_two):
+    dist = math.sqrt((n_one['x'] - n_two['x'])**2 + (n_one['y'] - n_two['y'])**2)
+    return int(dist/DIST_STEP)*DIST_STEP
 
 def calc_new_coord(prev_pos, target_pos, newDist):
     if newDist == 0: return target_pos
@@ -18,16 +19,25 @@ def calc_new_coord(prev_pos, target_pos, newDist):
     new_pos = target_pos + sign*np.array([newWidth, newHeight])
     return new_pos[0], new_pos[1]
 
-def run_policy(mdp, G, next_node, display=True):
+def run_policy(mdp, G, next_node, global_time, display=True):
     target_pos = (G.nodes[next_node]['x'], G.nodes[next_node]['y'])
     state = mdp.start_state
+    print("state: ", state) # TODO - remove debug statement
     num_steps = 0
     while True:
-        if hasattr(mdp, 'horizon'):
-            if num_steps >= mdp.horizon: return False, num_steps
-            state = mdp.policy_step(state, num_steps)
-        else:
+        # constrained flight
+        if hasattr(mdp, 'num_timesteps'):
+            time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
+            print("time_remaining: ", time_remaining) # TODO - remove debug statement
+            if time_remaining < 0: return False, num_steps
             state = mdp.policy_step(state)
+        else:
+            if 'arrival_time' in G.nodes[next_node]:
+                time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
+                print("time_remaining: ", time_remaining) # TODO - remove debug statement
+                state = mdp.policy_step(state, time_remaining)
+            else:
+                state = mdp.policy_step(state)
         print("state: ", state) # TODO - remove debug statement
 
         current_pos = (G.nodes['current']['x'], G.nodes['current']['y'])
@@ -40,19 +50,20 @@ def run_policy(mdp, G, next_node, display=True):
             G.nodes['current']['y'] = y
         print("G.nodes['current']: ", G.nodes['current']) # TODO - remove debug statement
 
-        # if we have reached our goal (speed=0, distance=0)
-        if state == (0,0): return True, num_steps
+        # if we have reached goal (speed=0, dist=0, remaining_time=0 if present)
+        if sum(state) == 0: return True, num_steps
         if display: display_graph(G)
         num_steps += 1
+        global_time += 1
+        if display: time.sleep(0.5)
+        
 
     # failed to reach goal
     return False, num_steps
 
 def update_estimate(prev_rand_var, global_time):
     # TODO: ensure variance isn't 0
-    #mean = prev_rand_var.distribution.sample()
-    # TODO
-    mean = int(prev_rand_var.mean - prev_rand_var.variance)
+    mean = max(0,int(prev_rand_var.distribution.rvs(1)))
     time_remaining = global_time - mean
     if time_remaining == 0:
         variance = 0

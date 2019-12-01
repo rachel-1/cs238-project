@@ -8,6 +8,32 @@ def add_test2_data(G, bus_routes):
     G.add_node('current', x=0, y=0, speed=0, riding=False)
 
     # bus 1 (stop 0)
+    G.add_node(0, arrival_time=RandVar(0,0), x=0, y=50)
+    
+    # bus 1 (stop 1)
+    G.add_node(1, x=0, y=10)
+
+    arrival_mean = int(calc_dist(G.nodes[0], G.nodes[1])/BUS_SPEED)
+    arrival_variance = BUS_ARRIVAL_VARIANCE*arrival_mean
+    G.nodes[1]['arrival_time'] = RandVar(arrival_mean, arrival_variance)
+
+    # bus 1 (stop 2)
+    G.add_node(2, x=100, y=10)
+
+    # bus 1 will always go between stops (riding edge)
+    G.add_edge(0,1, custom=False)
+    G.add_edge(1,2, custom=False)
+
+    # drone goal
+    G.add_node('end', x=100, y=80)
+
+    bus_routes.append(0)
+    
+def add_test1_data(G, bus_routes):
+    # drone starting location
+    G.add_node('current', x=0, y=0, speed=0, riding=False)
+
+    # bus 1 (stop 0)
     G.add_node(0, arrival_time=RandVar(0,0), x=0, y=5)
     
     # bus 1 (stop 1)
@@ -28,22 +54,6 @@ def add_test2_data(G, bus_routes):
     G.add_node('end', x=10, y=8)
 
     bus_routes.append(0)
-    
-def add_test1_data(G):
-    # drone starting location
-    G.add_node('current', x=0, y=0, speed=0, riding=False)
-
-    # bus 1 (stop 1)
-    G.add_node(1, estimated_arrival_time=2, x=1, y=0)
-
-    # bus 1 (stop 2)
-    G.add_node(2, estimated_arrival_time=4, x=5, y=0)
-
-    # bus 1 will always go between stops (riding edge)
-    G.add_edge(1,2,custom=False)
-
-    # drone goal
-    G.add_node('end', x=6, y=0)
 
 def init_grid_from_latlon_bounds(G,
                                  transit_graph,

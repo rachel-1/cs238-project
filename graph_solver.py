@@ -9,19 +9,24 @@ def calc_edge_weights(G, global_time):
         speed = current_node.get('speed', 0)
         neighbor_node = G.nodes()[neighbor]
         distance = calc_dist(current_node, neighbor_node)
-        
+        print("distance: ", distance) # TODO - remove debug statement
+
         # riding edge
         if node != 'current' and neighbor != 'end':
             horizon = neighbor_node['arrival_time'].mean - global_time
-            mdp = RidingPolicy((speed, distance), horizon)
+            mdp = Riding((speed, distance), horizon)
             weight = distance/BUS_SPEED
         else:
             if neighbor == 'end':
-                mdp = UnconstrainedFlightMDP((speed,distance))
+                mdp = UnconstrainedFlight((speed,distance))
             else:
-                horizon = neighbor_node['arrival_time'].mean - global_time
-                mdp = ConstrainedFlightMDP((speed,distance), horizon)
-            mdp.solve()
+                worst_case_arrival = neighbor_node['arrival_time'].mean + neighbor_node['arrival_time'].variance*2 # TODO
+                average_timesteps = neighbor_node['arrival_time'].mean - global_time
+                max_timesteps = int(worst_case_arrival - global_time)
+                print("average_timesteps: ", average_timesteps) # TODO - remove debug statement
+                print("max_timesteps: ", max_timesteps) # TODO - remove debug statement
+                mdp = ConstrainedFlight((speed,distance,average_timesteps), max_timesteps)
+                mdp.solve()
             weight = mdp.get_edge_weight()
         mdps[(node, neighbor)] = mdp
         G.add_edge(node, neighbor, weight=weight)
@@ -49,9 +54,11 @@ def add_edges(G, global_time):
             if other_name == 'end': # add unconstrained 
                 G.add_edge(node_name, other_name, custom=True)
             else: # add constrained edge
+                # TODO - account for variance
                 dist_between_nodes = calc_dist(node_data, other_data)
                 if node_name == 'current':
                     available_time = other_data['arrival_time'].mean - global_time
+                    if node_data['speed'] != 0 and dist_between_nodes == 0: continue
                 else:
                     available_time = other_data['arrival_time'].mean - node_data['arrival_time'].mean
 
@@ -82,7 +89,9 @@ def update_nodes(G, bus_routes, global_time):
             # update estimate for stop we're currently approaching
             next_stop = [_ for _ in G.neighbors(prev_stop)][0]
             new_estimate = update_estimate(G.nodes[next_stop]['arrival_time'], global_time)
+            print("Estimate for {} just updated to {} from {}".format(next_stop, new_estimate.mean, G.nodes[next_stop]['arrival_time'].mean))
             G.nodes[next_stop]['arrival_time'] = new_estimate
+
 
             # propogate uncertainty forward along bus route
             # TODO - why is variance needed for anything except closest stop?
@@ -97,6 +106,9 @@ def update_nodes(G, bus_routes, global_time):
                 G.nodes[next_stop]['arrival_time'] = RandVar(new_mean, new_variance)
 
         update_along_route(first_stop)
+    for node in G.nodes():
+        if 'arrival_time' not in G.nodes[node]: continue
+        print("node, G.nodes[node]['arrival_time']: ", node, G.nodes[node]['arrival_time'].mean) # TODO - remove debug statement
     # TODO - add stops that have come within planning horizon
 
     
