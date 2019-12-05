@@ -14,6 +14,7 @@ if __name__ == '__main__':
     
     G, bus_routes = init_graph('test1')
     global_time = 0
+    total_accel = 0
 
     if not args.skip_viz:
         display_graph(G, first_time=True)
@@ -55,8 +56,11 @@ if __name__ == '__main__':
                     print("Delay/speed-up")
                     break # there was a delay or speed-up, so replan
             # TODO - break off in the middle of execution if needed
-            was_successful, steps_taken = run_policy(mdp, G, path[idx+1], global_time, not args.skip_viz)
+
+            was_successful, steps_taken, accel_amt = run_policy(mdp, G, path[idx+1], global_time, not args.skip_viz)
+            global_time += steps_taken
             num_local_steps_taken += steps_taken
+            total_accel += accel_amt
             
             if not was_successful:
                 print("Failed!")
@@ -73,3 +77,8 @@ if __name__ == '__main__':
         edges_to_remove = [edge for edge in G.edges.data() if edge[2]['custom']]
         G.remove_edges_from(edges_to_remove)
 
+    total_time_taken = global_time
+    ENERGY_PER_ACCEL_UNIT = 1
+    total_energy_used = ENERGY_PER_ACCEL_UNIT * total_accel
+    print("Total time taken: ", total_time_taken)
+    print("Total energy used: ", total_energy_used)

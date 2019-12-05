@@ -24,19 +24,23 @@ def run_policy(mdp, G, next_node, global_time, display=True):
     state = mdp.start_state
     print("state: ", state) # TODO - remove debug statement
     num_steps = 0
+    total_accel = 0
     while True:
         # constrained flight
         if hasattr(mdp, 'num_timesteps'):
             time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
             print("time_remaining: ", time_remaining) # TODO - remove debug statement
-            if time_remaining < 0: return False, num_steps
+            if time_remaining < 0: return False, num_steps, total_accel
+            total_accel += abs(mdp.get_policy_action(state))
             state = mdp.policy_step(state)
         else:
             if 'arrival_time' in G.nodes[next_node]:
                 time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
                 print("time_remaining: ", time_remaining) # TODO - remove debug statement
+                total_accel += abs(mdp.get_policy_action(state, time_remaining))
                 state = mdp.policy_step(state, time_remaining)
             else:
+                total_accel += abs(mdp.get_policy_action(state))
                 state = mdp.policy_step(state)
         print("state: ", state) # TODO - remove debug statement
 
@@ -51,7 +55,7 @@ def run_policy(mdp, G, next_node, global_time, display=True):
         print("G.nodes['current']: ", G.nodes['current']) # TODO - remove debug statement
 
         # if we have reached goal (speed=0, dist=0, remaining_time=0 if present)
-        if sum(state) == 0: return True, num_steps
+        if sum(state) == 0: return True, num_steps, total_accel
         if display: display_graph(G)
         num_steps += 1
         global_time += 1
@@ -59,7 +63,7 @@ def run_policy(mdp, G, next_node, global_time, display=True):
         
 
     # failed to reach goal
-    return False, num_steps
+    return False, num_steps, total_accel
 
 def update_estimate(prev_rand_var, global_time):
     # TODO: ensure variance isn't 0

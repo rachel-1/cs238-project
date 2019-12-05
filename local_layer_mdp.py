@@ -140,6 +140,11 @@ class ConstrainedFlight(TransportationEdge):
         self.policy = vi.policy
         self.value_func = vi.V
 
+    def get_policy_action(self, state):
+        state_idx = self.state_to_idx(state)
+        action_idx = self.policy[state_idx]
+        return self.idx_to_action(action_idx)
+
     def policy_step(self, curr_state):
         print("curr_state: ", curr_state) # TODO - remove debug statement
         state_idx = self.state_to_idx(curr_state)
@@ -161,6 +166,11 @@ class UnconstrainedFlight(TransportationEdge):
         new_speed = min(DRONE_MAX_SPEED, distance)
             
         return new_speed, distance - new_speed
+
+    def get_policy_action(self, state):
+        speed, distance = state
+        new_speed = min(DRONE_MAX_SPEED, distance)
+        return new_speed - speed
 
     def get_edge_weight(self):
         time = (self.start_state[1] / DRONE_MAX_SPEED)
@@ -185,5 +195,15 @@ class Riding():
 
         return new_speed, distance - new_speed
         
+    def get_policy_action(self, state, remaining_time):
+        speed, distance = state
+        if speed == 0 or remaining_time == 1:
+            new_speed = 1
+        elif remaining_time == 0:
+            new_speed = distance = 0
+        else:
+            new_speed = distance/remaining_time
+        return new_speed - speed
+
 
         
