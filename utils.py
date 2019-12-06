@@ -19,7 +19,7 @@ def calc_new_coord(prev_pos, target_pos, newDist):
     new_pos = target_pos + sign*np.array([newWidth, newHeight])
     return new_pos[0], new_pos[1]
 
-def run_policy(mdp, G, next_node, global_time, display=True):
+def run_policy(mdp, G, next_node, global_time, min_value, display=True):
     target_pos = (G.nodes[next_node]['x'], G.nodes[next_node]['y'])
     state = mdp.start_state
     print("state: ", state) # TODO - remove debug statement
@@ -56,7 +56,7 @@ def run_policy(mdp, G, next_node, global_time, display=True):
         num_steps += 1
         global_time += 1
         if display: time.sleep(0.5)
-        
+
 
     # failed to reach goal
     return False, num_steps

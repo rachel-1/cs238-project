@@ -1,4 +1,5 @@
 import networkx as nx
+import numpy as np
 from graph_setup import init_graph
 from visualization import *
 from graph_solver import *
@@ -10,33 +11,41 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--skip_viz', action='store_true')
+    parser.add_argument('--beta', default=1, help="""Beta value between 0 and 1,
+                        where closer to 1 means greater the risk we take for
+                        connections. 1 means never abort (but may still be
+                        interrupted by global layer replanning.""")
     args = parser.parse_args()
-    
+
     G, bus_routes = init_graph('test1')
     global_time = 0
 
     if not args.skip_viz:
         display_graph(G, first_time=True)
-    
+
     # global layer
     while True:
         update_nodes(G, bus_routes, global_time)
         add_edges(G, global_time)
-        
+
         if args.debug:
             for edge in G.edges().data():
                 print("edge: ", edge)
-        
+
         if not args.skip_viz: display_graph(G)
 
         mdps = calc_edge_weights(G, global_time)
+        worst_value = -np.inf # TODO - get worst value of any controlled state (least likely to succeed)
+        if args.beta < 1:
+            min_value = worst_value * args.beta # lower bound for value func
 
         if args.debug:
             for edge in G.edges().data():
                 print("edge: ", edge)
-                
+
+        # Aborting Constrained Flight
         path = nx.astar_path(G, 'current', 'end')
-        
+
         if args.debug:
             print(path)
 
@@ -55,9 +64,9 @@ if __name__ == '__main__':
                     print("Delay/speed-up")
                     break # there was a delay or speed-up, so replan
             # TODO - break off in the middle of execution if needed
-            was_successful, steps_taken = run_policy(mdp, G, path[idx+1], global_time, not args.skip_viz)
+            was_successful, steps_taken = run_policy(mdp, G, path[idx+1], global_time, min_value, not args.skip_viz)
             num_local_steps_taken += steps_taken
-            
+
             if not was_successful:
                 print("Failed!")
                 break # allow global layer to replan
@@ -72,4 +81,3 @@ if __name__ == '__main__':
         # clear "custom" edges (i.e. not connections between buses)
         edges_to_remove = [edge for edge in G.edges.data() if edge[2]['custom']]
         G.remove_edges_from(edges_to_remove)
-
