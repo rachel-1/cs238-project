@@ -62,7 +62,7 @@ if __name__ == '__main__':
                 # TODO check if there was a delay or speed-up, so replan
 
             # TODO - break off in the middle of execution if needed
-            was_successful, steps_taken, accel = run_policy(policy, G, path[idx+1], global_time, not args.skip_viz)
+            was_successful, steps_taken, accel_amt = run_policy(policy, G, path[idx+1], global_time, not args.skip_viz)
             global_time += steps_taken
             num_local_steps_taken += steps_taken
             total_accel += accel_amt
