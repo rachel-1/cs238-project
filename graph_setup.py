@@ -9,7 +9,7 @@ def add_test2_data(G, bus_routes):
 
     # bus 1 (stop 0)
     G.add_node(0, arrival_time=RandVar(0,0), x=0, y=50)
-    
+
     # bus 1 (stop 1)
     G.add_node(1, x=0, y=10)
 
@@ -28,14 +28,14 @@ def add_test2_data(G, bus_routes):
     G.add_node('end', x=100, y=80)
 
     bus_routes.append(0)
-    
+
 def add_test1_data(G, bus_routes):
     # drone starting location
     G.add_node('current', x=0, y=0, speed=0, riding=False)
 
     # bus 1 (stop 0)
     G.add_node(0, arrival_time=RandVar(0,0), x=0, y=5)
-    
+
     # bus 1 (stop 1)
     G.add_node(1, x=0, y=1)
 
@@ -72,12 +72,14 @@ def init_grid_from_latlon_bounds(G,
     # 140 columns, 120 rows
     num_rows = int(math.ceil(abs(lat_end - lat_start) / float(step)))
     num_cols = int(math.ceil(abs(lon_end - lon_start) / float(step)))
+    print(num_rows)
+    print(num_cols)
 
     def get_row(lat): return int(round((lat - lat_start) / float(step)))
     def get_col(lon): return int(round((lon - lon_start) / float(step)))
 
     # Assume drone starts top left
-    G.add_node('current', x=0, y=0)
+    G.add_node('current', x=0, y=0, speed=0, riding=False)
     # Destination bottom right
     G.add_node('end', x=num_cols - 1, y=num_rows - 1)
 
@@ -92,7 +94,7 @@ def init_grid_from_latlon_bounds(G,
     #   lat - coords of stop,
     #   lon
     for bus_id, bus_stops in enumerate(transit_graph['transit_trips']):
-        for i, stop in bus_stops:
+        for i, stop in enumerate(bus_stops):
             stop_id = stop['stop_id']
             stop_idx = i  # the number of this stop on this bus route
 
@@ -100,18 +102,18 @@ def init_grid_from_latlon_bounds(G,
             row = get_row(stop_coords['lat'])  # position in grid
             col = get_col(stop_coords['lon'])
 
-            arrival_time = stop['arrival_time']
+            arrival_mean = stop['arrival_time']
+            arrival_variance = BUS_ARRIVAL_VARIANCE*arrival_mean
 
             node_id = str(bus_id) + '_' + str(stop_id)
             G.add_node(node_id, bus_id=bus_id, stop_id=stop_id, x=col,
                        y=row, lat=stop_coords['lat'], lon=stop_coords['lon'],
-                       estimated_arrival_time=arrival_time)
+                       arrival_time=RandVar(arrival_mean, arrival_variance))
 
 
 def add_sf_oct_2019_data(G, transit_graph_file='transit_graph_Oct_2019.json'):
     with open(transit_graph_file, 'r') as f:
         transit_graph = json.load(f)
-    print(transit_graph)
     init_grid_from_latlon_bounds(G, transit_graph)
 
 
