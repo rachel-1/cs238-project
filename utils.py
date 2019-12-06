@@ -57,14 +57,12 @@ def run_policy(policy, G, next_node, global_time, min_value, display=True):
     num_steps = 0
     total_accel = 0
     while True:
-        # constrained flight
         if 'arrival_time' in G.nodes[next_node]:
             time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
             # check whether to abort
-            if hasattr(policy, 'value_func'): # check if constrained flight
-                current_state_idx = policy.state_to_idx((speed, distance, global_time))
-                if policy.value_func[current_state_idx] < min_value:
-                    return True, False, num_steps, total_accel
+            if hasattr(policy, 'value_func') and \
+               policy.should_abort(speed, distance, time_remaining, min_value):
+                return True, False, num_steps, total_accel
 
             if time_remaining < 0: return False, False, num_steps, total_accel
             # overwrite time remaining in the state

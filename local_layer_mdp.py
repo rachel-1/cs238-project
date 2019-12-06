@@ -145,6 +145,23 @@ class ConstrainedFlight():
         new_state_idx = np.random.choice(range(self.num_states), p=self.T[action_idx, state_idx])
         return self.idx_to_state(new_state_idx)[:2]
 
+    def should_abort(self, speed, distance, time_remaining, min_value):
+        # if outside state space, just directly check if too far away to make it 
+        if distance > (self.num_cols-1)*DIST_STEP:
+            return distance/DRONE_MAX_SPEED > time_remaining
+
+        # if early and need to hover
+        if time_remaining > (self.num_timesteps-1):
+            return False
+
+        # if already late
+        if time_remaining < 0:
+            return True
+
+        # otherwise use MDP solution
+        current_state_idx = self.state_to_idx((speed, distance, time_remaining))
+        return self.value_func[current_state_idx] < min_value
+    
     def get_edge_weight(self, speed, distance, available_time):
         # how much cost is incurred by executing the deterministic policy above
         deterministic_cost = 0 
