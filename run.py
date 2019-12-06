@@ -11,10 +11,11 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--skip_viz', action='store_true')
-    parser.add_argument('--beta', default=1, help="""Beta value between 0 and 1,
-                        where closer to 1 means greater the risk we take for
-                        connections. 1 means never abort (but may still be
-                        interrupted by global layer replanning.""")
+    parser.add_argument('--beta', type=float, default=1.0,
+                        help="""Beta value between 0 and 1, where closer to 1
+                        means greater the risk we take for connections. 1 means
+                        never abort (but may still be interrupted by global
+                        layer replanning.""")
     args = parser.parse_args()
 
     G, bus_routes = init_graph('test1')
@@ -39,9 +40,8 @@ if __name__ == '__main__':
 
         if not args.skip_viz: display_graph(G)
 
-        worst_value = -np.inf # TODO - get worst value of any controlled state (least likely to succeed)
-        if args.beta < 1:
-            min_value = worst_value * args.beta # lower bound for value func
+        worst_value = min(mdp.value_func)
+        min_value = worst_value * args.beta # lower bound for value func
 
         if args.debug:
             for edge in G.edges().data():
@@ -72,7 +72,11 @@ if __name__ == '__main__':
                 # TODO check if there was a delay or speed-up, so replan
 
             # TODO - break off in the middle of execution if needed
-            was_successful, steps_taken, accel_amt = run_policy(policy, G, path[idx+1], global_time, not args.skip_viz)
+            aborted, was_successful, steps_taken, accel_amt = run_policy(policy, G, path[idx+1], global_time, min_value, not args.skip_viz)
+            if aborted:
+                print("Aborted path, replanning!")
+                break # allow global layer to replan
+
             global_time += steps_taken
             num_local_steps_taken += steps_taken
             total_accel += accel_amt
