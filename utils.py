@@ -40,8 +40,7 @@ def get_candidate_paths(path, policy, G, global_time, min_value):
                 n1 = candidate_path[j+1]
                 speed = H.nodes[n0]['speed']
                 distance = calc_dist(H.nodes[n0], H.nodes[n1])
-                state_idx = policy.state_to_idx((speed, distance, global_time+j)) # TODO - this line bugs out
-                if policy.value_func[state_idx] < min_value:
+                if policy.should_abort(speed, distance, time_remaining, min_value):
                     continue
             candidates.add(candidate_path)
         except:
