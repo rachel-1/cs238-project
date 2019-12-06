@@ -47,8 +47,8 @@ def add_test1_data(G, bus_routes):
     G.add_node(2, x=10, y=1)
 
     # bus 1 will always go between stops (riding edge)
-    G.add_edge(0,1, custom=False)
-    G.add_edge(1,2, custom=False)
+    G.add_edge(0,1,edge_type='riding',custom=False)
+    G.add_edge(1,2,edge_type='riding',custom=False)
 
     # drone goal
     G.add_node('end', x=10, y=8)

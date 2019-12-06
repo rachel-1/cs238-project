@@ -13,6 +13,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     G, bus_routes = init_graph('test1')
+
+    mdp = ConstrainedFlight(max_distance=5, max_timesteps=5)
+    mdp.solve()
+    
     global_time = 0
 
     if not args.skip_viz:
@@ -21,15 +25,13 @@ if __name__ == '__main__':
     # global layer
     while True:
         update_nodes(G, bus_routes, global_time)
-        add_edges(G, global_time)
+        add_edges(G, global_time, mdp)
         
         if args.debug:
             for edge in G.edges().data():
                 print("edge: ", edge)
         
         if not args.skip_viz: display_graph(G)
-
-        mdps = calc_edge_weights(G, global_time)
 
         if args.debug:
             for edge in G.edges().data():
@@ -43,19 +45,23 @@ if __name__ == '__main__':
         # local layer
         num_local_steps_taken = 0
         for idx in range(len(path)-1):
-            mdp = mdps[(path[idx], path[idx+1])]
             next_node = G.nodes[path[idx+1]]
-            if hasattr(mdp, 'horizon'):
-                print("mdp.horizon: ", mdp.horizon) # TODO - remove debug statement
-                print("global_time: ", global_time) # TODO - remove debug statement
+            edge_type = G.get_edge_data(path[idx], path[idx+1])['edge_type']
+
+            if edge_type == 'unconstrained':
+                policy = UnconstrainedFlight()
+            else:
                 remaining_time = next_node['arrival_time'].mean - global_time
-                if mdp.horizon != remaining_time:
-                    print("mdp.horizon: ", mdp.horizon) # TODO - remove debug statement
-                    print("remaining_time: ", remaining_time) # TODO - remove debug statement
-                    print("Delay/speed-up")
-                    break # there was a delay or speed-up, so replan
+                if edge_type == 'riding':
+                    policy = Riding()
+                elif edge_type == 'constrained':
+                    dist = calc_dist(G.nodes[path[idx]], next_node)
+                    policy = mdp
+                
+                # TODO check if there was a delay or speed-up, so replan
+
             # TODO - break off in the middle of execution if needed
-            was_successful, steps_taken = run_policy(mdp, G, path[idx+1], global_time, not args.skip_viz)
+            was_successful, steps_taken = run_policy(policy, G, path[idx+1], global_time, not args.skip_viz)
             num_local_steps_taken += steps_taken
             
             if not was_successful:

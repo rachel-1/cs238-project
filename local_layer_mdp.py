@@ -4,12 +4,8 @@ from scipy import stats
 import numpy as np
 from utils import *
 
-class TransportationEdge():
-    def __init__(self, start_state):
-        self.start_state = start_state
-            
-class ConstrainedFlight(TransportationEdge):
-    def __init__(self, start_state, max_timesteps):
+class ConstrainedFlight():
+    def __init__(self, max_distance, max_timesteps):
         # (A, S, S)
         # state: (speed, distance from goal, timesteps remaining)
         # states[r,c,t]:
@@ -17,14 +13,11 @@ class ConstrainedFlight(TransportationEdge):
         #  - distance from goal = c * DIST_STEP
         self.num_actions = int(2*DRONE_MAX_ACCEL/ACCEL_STEP + 1)
         self.num_rows = int(DRONE_MAX_SPEED/SPEED_STEP + 1)
-        self.num_cols = int(start_state[1]/DIST_STEP + 1)
+        self.num_cols = int(max_distance/DIST_STEP + 1)
         self.num_timesteps = max_timesteps+1 # to account for zero-indexing
         self.state_space = (self.num_rows,self.num_cols,self.num_timesteps)
         print("self.state_space: ", self.state_space) # TODO - remove debug statement
         self.num_states = self.num_rows*self.num_cols*self.num_timesteps
-
-        super().__init__(start_state)
-        self.start_state_idx = self.state_to_idx(start_state)
 
         # penalty for acceleration (S, A)
         self.R = np.zeros((self.num_states, self.num_actions))
@@ -140,42 +133,33 @@ class ConstrainedFlight(TransportationEdge):
         self.policy = vi.policy
         self.value_func = vi.V
 
-    def policy_step(self, curr_state):
-        print("curr_state: ", curr_state) # TODO - remove debug statement
-        state_idx = self.state_to_idx(curr_state)
+    def policy_step(self, speed, distance, time):
+        state_idx = self.state_to_idx((speed, distance, time))
         action_idx = self.policy[state_idx]
         new_state_idx = np.random.choice(range(self.num_states), p=self.T[action_idx, state_idx])
-        return self.idx_to_state(new_state_idx)
+        return self.idx_to_state(new_state_idx)[:2]
 
-    def get_edge_weight(self):
-        return -1*self.value_func[self.start_state_idx]
+    def get_edge_weight(self, speed, distance, available_time):
+        state_idx = self.state_to_idx((speed, distance, available_time))
+        return -1*self.value_func[state_idx]
 
-class UnconstrainedFlight(TransportationEdge):
-    def __init__(self, start_state):
-        print("start_state: ", start_state) # TODO - remove debug statement
-        super().__init__(start_state)
-
-    def policy_step(self, curr_state):
-        speed, distance = curr_state
-
+class UnconstrainedFlight():
+    def policy_step(self, speed, distance):
+        
         new_speed = min(DRONE_MAX_SPEED, distance)
             
         return new_speed, distance - new_speed
 
-    def get_edge_weight(self):
-        time = (self.start_state[1] / DRONE_MAX_SPEED)
-        distance = self.start_state[1]
+    @staticmethod
+    def get_edge_weight(start_speed, distance):
+        # TODO - use start_speed?
+        time = distance / DRONE_MAX_SPEED
         return TIME_COST*time + DISTANCE_COST*distance
 
     
 class Riding():
-    def __init__(self, start_state, horizon):
-        self.start_state = start_state
-        self.horizon = horizon
-
-    def policy_step(self, curr_state, remaining_time):
-        speed, distance = curr_state
-
+    def policy_step(self, speed, distance, remaining_time):
+        
         if speed == 0 or remaining_time == 1:
             new_speed = 1
         elif remaining_time == 0:
@@ -184,6 +168,10 @@ class Riding():
             new_speed = distance/remaining_time
 
         return new_speed, distance - new_speed
+
+    @staticmethod
+    def get_edge_weight(distance):
+        return distance/BUS_SPEED
         
 
         
