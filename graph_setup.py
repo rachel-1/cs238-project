@@ -2,6 +2,7 @@ import json
 from utils import *
 from config import *
 import networkx as nx
+from local_layer_mdp import Riding
 
 def add_test2_data(G, bus_routes):
     # drone starting location
@@ -57,6 +58,7 @@ def add_test1_data(G, bus_routes):
 
 def init_grid_from_latlon_bounds(G,
                                  transit_graph,
+                                 bus_routes,
                                  lat_start=37.675016,
                                  lat_end=37.814703,
                                  lon_start=-122.505734,
@@ -79,9 +81,14 @@ def init_grid_from_latlon_bounds(G,
     def get_col(lon): return int(round((lon - lon_start) / float(step)))
 
     # Assume drone starts top left
-    G.add_node('current', x=0, y=0, speed=0, riding=False)
+    G.add_node('current', x=0, y=0, speed=0)
+    # TODO - uncomment to use simple version
+    #G.add_node('current', x=85, y=115, speed=0)
+    
     # Destination bottom right
     G.add_node('end', x=num_cols - 1, y=num_rows - 1)
+    # TODO - uncomment to use simple version
+    #G.add_node('end', x=90, y=115)
 
     # Each node is named bus_id_stop_id
     # Attributes:
@@ -105,16 +112,28 @@ def init_grid_from_latlon_bounds(G,
             arrival_mean = stop['arrival_time']
             arrival_variance = BUS_ARRIVAL_VARIANCE*arrival_mean
 
+            # TODO - note that arrival_time is overwritten for stops that aren't first
             node_id = str(bus_id) + '_' + str(stop_id)
-            G.add_node(node_id, bus_id=bus_id, stop_id=stop_id, x=col,
+            G.add_node(node_id, bus_id=bus_id, stop_id=stop_id, x=col, speed=0,
                        y=row, lat=stop_coords['lat'], lon=stop_coords['lon'],
                        arrival_time=RandVar(arrival_mean, arrival_variance))
 
+            if i == 0:
+                bus_routes.append(node_id)
+            else:
+                prev_stop = "{}_{}".format(bus_id, bus_stops[i-1]['stop_id'])
+                dist = calc_dist(G.nodes[prev_stop], G.nodes[node_id])
+                print("dist: ", dist) # TODO - remove debug statement
+                G.add_edge(prev_stop, node_id, edge_type='riding', custom=False,
+                           weight=Riding.get_edge_weight(dist))
+            # TODO - uncomment to use simple
+            #if i == 3: break
+        #break TODO
 
-def add_sf_oct_2019_data(G, transit_graph_file='transit_graph_Oct_2019.json'):
+def add_sf_oct_2019_data(G, bus_routes, transit_graph_file='transit_graph_Oct_2019.json'):
     with open(transit_graph_file, 'r') as f:
         transit_graph = json.load(f)
-    init_grid_from_latlon_bounds(G, transit_graph)
+    init_grid_from_latlon_bounds(G, transit_graph, bus_routes)
 
 
 def init_graph(graph_name):
@@ -126,6 +145,6 @@ def init_graph(graph_name):
     if graph_name == 'test2':
         add_test2_data(G, bus_routes)
     elif graph_name == 'sf_oct_2019':
-        add_sf_oct_2019_data(G)
+        add_sf_oct_2019_data(G, bus_routes)
 
     return G, bus_routes

@@ -18,7 +18,7 @@ if __name__ == '__main__':
                         layer replanning.""")
     args = parser.parse_args()
 
-    G, bus_routes = init_graph('test1')
+    G, bus_routes = init_graph('sf_oct_2019')
 
     mdp = ConstrainedFlight(max_distance=1, max_timesteps=1)
     mdp.solve()
