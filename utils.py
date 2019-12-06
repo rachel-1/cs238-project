@@ -3,6 +3,7 @@ import math
 import numpy as np
 from visualization import *
 import time
+import copy
 
 def calc_dist(n_one, n_two):
     dist = math.sqrt((n_one['x'] - n_two['x'])**2 + (n_one['y'] - n_two['y'])**2)
@@ -19,6 +20,35 @@ def calc_new_coord(prev_pos, target_pos, newDist):
     new_pos = target_pos + sign*np.array([newWidth, newHeight])
     return new_pos[0], new_pos[1]
 
+def get_candidate_paths(path, policy, G, global_time, min_value):
+    # Get n-1 candidate paths, where n is length of best_path
+    # Prevent any ONE of the same connections of the best path being used to
+    # generate candidates
+    candidates = set()
+    for i in range(len(path)-1):
+        H = copy.deepcopy(G)
+        H.remove_edge(path[i], path[i+1])
+        heuristic = lambda n0, n1: calc_dist(H.nodes[n0], H.nodes[n1]) # for A*
+        try: # first check if a path exists from current to end even without removed edge
+            candidate_path = nx.astar_path(H, 'current', 'end', heuristic=heuristic)
+        except nx.exception.NetworkXNoPath as err:
+            continue
+
+        try: # now use equation 9 to reject edges
+            for j in range(len(candidate_path)-1):
+                n0 = candidate_path[j]
+                n1 = candidate_path[j+1]
+                speed = H.nodes[n0]['speed']
+                distance = calc_dist(H.nodes[n0], H.nodes[n1])
+                state_idx = policy.state_to_idx((speed, distance, global_time+j)) # TODO - this line bugs out
+                if policy.value_func[state_idx] < min_value:
+                    continue
+            candidates.add(candidate_path)
+        except:
+            continue
+        del H # free memory
+    return candidates
+
 def run_policy(policy, G, next_node, global_time, min_value, display=True):
     target_pos = (G.nodes[next_node]['x'], G.nodes[next_node]['y'])
     speed = G.nodes['current']['speed']
@@ -32,7 +62,7 @@ def run_policy(policy, G, next_node, global_time, min_value, display=True):
             time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
             # check whether to abort
             if hasattr(policy, 'value_func'): # check if constrained flight
-                current_state_idx = policy.state_to_idx((speed, distance, time_remaining))
+                current_state_idx = policy.state_to_idx((speed, distance, global_time))
                 if policy.value_func[current_state_idx] < min_value:
                     return True, False, num_steps, total_accel
 

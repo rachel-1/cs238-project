@@ -29,6 +29,9 @@ if __name__ == '__main__':
     if not args.skip_viz:
         display_graph(G, first_time=True)
 
+    replan = False
+    heuristic = lambda n0, n1: calc_dist(G.nodes[n0], G.nodes[n1]) # for A*
+
     # global layer
     while True:
         update_nodes(G, bus_routes, global_time)
@@ -47,11 +50,22 @@ if __name__ == '__main__':
             for edge in G.edges().data():
                 print("edge: ", edge)
 
-        # Aborting Constrained Flight
-        path = nx.astar_path(G, 'current', 'end')
+        # first iteration
+        if global_time == 0:
+            path = nx.astar_path(G, 'current', 'end', heuristic=heuristic)
+            # get set of candidate paths
+            candidates = get_candidate_paths(path, mdp, G, global_time, min_value)
+
+        # Open layer replanning or aborting constrained flight
+        if replan:
+            path = candidates.pop(0)
+            # recalculate candidates too?
+            candidates = get_candidate_paths(path, G, global_time, min_value)
+            replan = False
 
         if args.debug:
-            print(path)
+            print("Best path: ", path)
+            print("Candidate paths: ", candidates)
 
         # local layer
         num_local_steps_taken = 0
