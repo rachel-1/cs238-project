@@ -24,11 +24,12 @@ def run_policy(policy, G, next_node, global_time, display=True):
     speed = G.nodes['current']['speed']
     distance = calc_dist(G.nodes['current'], G.nodes[next_node])
     num_steps = 0
+    total_accel = 0
     while True:
         # constrained flight
         if 'arrival_time' in G.nodes[next_node]:
             time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
-            if time_remaining < 0: return False, num_steps
+            if time_remaining < 0: return False, num_steps, total_accel
             # overwrite time remaining in the state
             # TODO - if the bus is super late (> mean + 2*std_dev)
             speed, distance = policy.policy_step(speed, distance, time_remaining)
@@ -37,6 +38,8 @@ def run_policy(policy, G, next_node, global_time, display=True):
             speed, distance = policy.policy_step(speed, distance)
         print("speed, distance: ", speed, distance) # TODO - remove debug statement
 
+        total_accel += abs(speed - G.nodes['current']['speed'])
+        
         current_pos = (G.nodes['current']['x'], G.nodes['current']['y'])
 
         # update x,y position of drone
@@ -50,7 +53,7 @@ def run_policy(policy, G, next_node, global_time, display=True):
         # if we have reached goal (speed=0, dist=0, remaining_time=0 if present)
         if speed == 0 and distance == 0 \
            and (time_remaining is None or time_remaining == 0):
-            return True, num_steps
+            return True, num_steps, total_accel
         if display: display_graph(G)
         num_steps += 1
         global_time += 1
@@ -58,7 +61,7 @@ def run_policy(policy, G, next_node, global_time, display=True):
         
 
     # failed to reach goal
-    return False, num_steps
+    return False, num_steps, total_accel
 
 def update_estimate(prev_rand_var, global_time):
     # TODO: ensure variance isn't 0

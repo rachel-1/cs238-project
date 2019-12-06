@@ -173,5 +173,15 @@ class Riding():
     def get_edge_weight(distance):
         return distance/BUS_SPEED
         
+    def get_policy_action(self, state, remaining_time):
+        speed, distance = state
+        if speed == 0 or remaining_time == 1:
+            new_speed = 1
+        elif remaining_time == 0:
+            new_speed = distance = 0
+        else:
+            new_speed = distance/remaining_time
+        return new_speed - speed
+
 
         
