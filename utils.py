@@ -21,37 +21,39 @@ def calc_new_coord(prev_pos, target_pos, newDist):
 
 def run_policy(mdp, G, next_node, global_time, min_value, display=True):
     target_pos = (G.nodes[next_node]['x'], G.nodes[next_node]['y'])
-    state = mdp.start_state
-    print("state: ", state) # TODO - remove debug statement
+    speed = G.nodes['current']['speed']
+    distance = calc_dist(G.nodes['current'], G.nodes[next_node])
     num_steps = 0
+    total_accel = 0
     while True:
         # constrained flight
-        if hasattr(mdp, 'num_timesteps'):
+        if 'arrival_time' in G.nodes[next_node]:
             time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
-            print("time_remaining: ", time_remaining) # TODO - remove debug statement
-            if time_remaining < 0: return False, num_steps
-            state = mdp.policy_step(state)
+            if time_remaining < 0: return False, num_steps, total_accel
+            # overwrite time remaining in the state
+            # TODO - if the bus is super late (> mean + 2*std_dev)
+            speed, distance = policy.policy_step(speed, distance, time_remaining)
         else:
-            if 'arrival_time' in G.nodes[next_node]:
-                time_remaining = G.nodes[next_node]['arrival_time'].mean - global_time
-                print("time_remaining: ", time_remaining) # TODO - remove debug statement
-                state = mdp.policy_step(state, time_remaining)
-            else:
-                state = mdp.policy_step(state)
-        print("state: ", state) # TODO - remove debug statement
+            time_remaining = None
+            speed, distance = policy.policy_step(speed, distance)
+        print("speed, distance: ", speed, distance) # TODO - remove debug statement
+
+        total_accel += abs(speed - G.nodes['current']['speed'])
 
         current_pos = (G.nodes['current']['x'], G.nodes['current']['y'])
 
         # update x,y position of drone
         if num_steps != 0:
-            x, y = calc_new_coord(current_pos, target_pos, state[1])
-            G.nodes['current']['speed'] = state[0]
+            x, y = calc_new_coord(current_pos, target_pos, distance)
+            G.nodes['current']['speed'] = speed
             G.nodes['current']['x'] = x
             G.nodes['current']['y'] = y
         print("G.nodes['current']: ", G.nodes['current']) # TODO - remove debug statement
 
         # if we have reached goal (speed=0, dist=0, remaining_time=0 if present)
-        if sum(state) == 0: return True, num_steps
+        if speed == 0 and distance == 0 \
+           and (time_remaining is None or time_remaining == 0):
+            return True, num_steps, total_accel
         if display: display_graph(G)
         num_steps += 1
         global_time += 1
@@ -59,7 +61,7 @@ def run_policy(mdp, G, next_node, global_time, min_value, display=True):
 
 
     # failed to reach goal
-    return False, num_steps
+    return False, num_steps, total_accel
 
 def update_estimate(prev_rand_var, global_time):
     # TODO: ensure variance isn't 0

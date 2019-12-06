@@ -1,41 +1,9 @@
 from utils import *
 from local_layer_mdp import *
 
-def calc_edge_weights(G, global_time):
-    mdps = {}
-    #riding = current_node['riding']
-    for node, neighbor in G.edges():
-        current_node = G.nodes()[node]
-        speed = current_node.get('speed', 0)
-        neighbor_node = G.nodes()[neighbor]
-        distance = calc_dist(current_node, neighbor_node)
-        print("distance: ", distance) # TODO - remove debug statement
-
-        # riding edge
-        if node != 'current' and neighbor != 'end':
-            horizon = neighbor_node['arrival_time'].mean - global_time
-            mdp = Riding((speed, distance), horizon)
-            weight = distance/BUS_SPEED
-        else:
-            if neighbor == 'end':
-                mdp = UnconstrainedFlight((speed,distance))
-            else:
-                worst_case_arrival = neighbor_node['arrival_time'].mean + neighbor_node['arrival_time'].variance*2 # TODO
-                average_timesteps = neighbor_node['arrival_time'].mean - global_time
-                max_timesteps = int(worst_case_arrival - global_time)
-                print("average_timesteps: ", average_timesteps) # TODO - remove debug statement
-                print("max_timesteps: ", max_timesteps) # TODO - remove debug statement
-                mdp = ConstrainedFlight((speed,distance,average_timesteps), max_timesteps)
-                mdp.solve()
-            weight = mdp.get_edge_weight()
-        mdps[(node, neighbor)] = mdp
-        G.add_edge(node, neighbor, weight=weight)
-    return mdps
-
 # TODO - check for cycles?!
-# TODO - remove nodes that have been passed already
 # TODO - skip adding edges from unreachable nodes
-def add_edges(G, global_time):
+def add_edges(G, global_time, mdp):
     # unconstrained: edges that connect to end goal
     # riding: edges between bus stops (for a given bus) already present
     # constrained: edges between drone reachable intersection points
@@ -51,19 +19,29 @@ def add_edges(G, global_time):
             # should never go backward to current
             if other_name == 'current': continue
 
-            if other_name == 'end': # add unconstrained 
-                G.add_edge(node_name, other_name, custom=True)
+            dist = calc_dist(node_data, other_data)
+            
+            # unconstrained flight
+            if other_name == 'end':
+                weight = UnconstrainedFlight.get_edge_weight(node_data.get('speed'), dist)
+                G.add_edge(node_name, other_name,
+                           custom=True, edge_type='unconstrained',
+                           weight=weight)
             else: # add constrained edge
                 # TODO - account for variance
-                dist_between_nodes = calc_dist(node_data, other_data)
+
                 if node_name == 'current':
                     available_time = other_data['arrival_time'].mean - global_time
-                    if node_data['speed'] != 0 and dist_between_nodes == 0: continue
+                    if node_data['speed'] != 0 and dist == 0: continue
                 else:
                     available_time = other_data['arrival_time'].mean - node_data['arrival_time'].mean
 
-                if available_time > 0 and dist_between_nodes/available_time <= DRONE_MAX_SPEED:
-                    G.add_edge(node_name, other_name, custom=True)        
+                if available_time > 0 and dist/available_time <= DRONE_MAX_SPEED:
+                    speed = node_data['speed']
+                    weight = mdp.get_edge_weight(speed, dist, available_time)
+                    G.add_edge(node_name, other_name,
+                               custom=True, edge_type='constrained',
+                               weight=weight)        
 
 def update_nodes(G, bus_routes, global_time):
 
@@ -102,7 +80,7 @@ def update_nodes(G, bus_routes, global_time):
                 next_stop = next_stops[0]
                 travel_time = calc_dist(G.nodes[prev_stop], G.nodes[next_stop]) / BUS_SPEED
                 new_mean = G.nodes[prev_stop]['arrival_time'].mean + travel_time
-                new_variance = G.nodes[prev_stop]['arrival_time'].variance*BUS_ARRIVAL_VARIANCE*travel_time
+                new_variance = G.nodes[prev_stop]['arrival_time'].variance+BUS_ARRIVAL_VARIANCE*travel_time
                 G.nodes[next_stop]['arrival_time'] = RandVar(new_mean, new_variance)
 
         update_along_route(first_stop)
