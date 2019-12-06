@@ -14,7 +14,7 @@ if __name__ == '__main__':
     
     G, bus_routes = init_graph('test1')
 
-    mdp = ConstrainedFlight(max_distance=5, max_timesteps=5)
+    mdp = ConstrainedFlight(max_distance=1, max_timesteps=1)
     mdp.solve()
     
     global_time = 0

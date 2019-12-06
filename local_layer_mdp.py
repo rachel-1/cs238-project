@@ -134,14 +134,39 @@ class ConstrainedFlight():
         self.value_func = vi.V
 
     def policy_step(self, speed, distance, time):
-        state_idx = self.state_to_idx((speed, distance, time))
+        try:
+            state_idx = self.state_to_idx((speed, distance, time))
+        except ValueError: # if outside state space, use deterministic policy
+            accel = min(DRONE_MAX_ACCEL, DRONE_MAX_SPEED - speed)
+            new_speed = speed + accel
+            return new_speed, distance - new_speed
+        
         action_idx = self.policy[state_idx]
         new_state_idx = np.random.choice(range(self.num_states), p=self.T[action_idx, state_idx])
         return self.idx_to_state(new_state_idx)[:2]
 
     def get_edge_weight(self, speed, distance, available_time):
+        # how much cost is incurred by executing the deterministic policy above
+        deterministic_cost = 0 
+        
+        # if distance too large
+        if distance > (self.num_cols-1)*DIST_STEP:
+            # how long to get to distance in state space
+            distance_travelled = distance - (self.num_cols-1)*DIST_STEP
+            time_spent = distance_travelled/DRONE_MAX_SPEED
+            deterministic_cost += TIME_COST*time_spent + DISTANCE_COST*distance_travelled
+            
+            available_time -= time_spent
+            distance = (self.num_cols-1)*DIST_STEP
+
+        # if time remaining is still too large, just hover at goal
+        if available_time > (self.num_timesteps-1):
+            time_spent = available_time - (self.num_timesteps-1)
+            deterministic_cost += TIME_COST*time_spent
+            available_time = self.num_timesteps - 1
+        
         state_idx = self.state_to_idx((speed, distance, available_time))
-        return -1*self.value_func[state_idx]
+        return deterministic_cost + -1*self.value_func[state_idx]
 
 class UnconstrainedFlight():
     def policy_step(self, speed, distance):
